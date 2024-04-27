@@ -1,0 +1,76 @@
+name: Simple Community Site
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  create-post:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Create Post
+      run: |
+        echo "author: ${{ github.actor }}" > posts.slDB
+        echo "title: ${{ github.event.head_commit.message }}" >> posts.slDB
+        echo "content: ${{ github.event.head_commit.message }}" >> posts.slDB
+        echo "date: $(date +'%Y-%m-%d %H:%M:%S')" >> posts.slDB
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add posts.slDB
+        git commit -m "New post by ${{ github.actor }}"
+        git push
+
+  view-posts:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Read Posts
+      run: |
+        cat posts.slDB
+
+  deploy-website:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Generate HTML
+      run: |
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+          <title>Community Site</title>
+        </head>
+        <body>
+          <h1>Community Site</h1>
+          <form action='./create-post' method='post'>
+            <label for='title'>Title:</label><br>
+            <input type='text' id='title' name='title'><br>
+            <label for='content'>Content:</label><br>
+            <textarea id='content' name='content'></textarea><br><br>
+            <input type='submit' value='Submit'>
+          </form>
+          <h2>Recent Posts</h2>
+          <ul>" > index.html
+        cat posts.slDB | while read line; do
+          echo "<li>$line</li>" >> index.html
+        done
+        echo "</ul>
+        </body>
+        </html>" >> index.html
+
+    - name: Deploy Website
+      run: |
+        mkdir -p docs
+        mv index.html docs/index.html
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/index.html
+        git commit -m "Update website"
+        git push
